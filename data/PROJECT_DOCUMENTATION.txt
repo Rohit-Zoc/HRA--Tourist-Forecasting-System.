@@ -1,0 +1,391 @@
+================================================================================
+        EVEREST REGION TOURISM DATA ANALYSIS - PROJECT DOCUMENTATION
+================================================================================
+                    Comprehensive Technical Reference
+                         For Third-Party Explanation
+================================================================================
+
+TABLE OF CONTENTS
+-----------------
+1. Project Overview
+2. Data Source & Schema
+3. Project Structure
+4. Libraries Used & Their Roles
+5. Algorithms, Methods & Logic
+6. Components Explained
+7. Data Flow
+8. Key Outputs
+9. How to Explain This Project to Others
+
+
+================================================================================
+1. PROJECT OVERVIEW
+================================================================================
+
+PURPOSE
+-------
+This project analyzes tourist arrivals in the Everest region (Namche Bazar area)
+of Nepal, spanning from 1995 to 2025. It provides:
+  - Data cleaning and validation
+  - Exploratory data analysis
+  - Statistical summaries and visualizations
+  - Outlier and crisis-event analysis (2015 Earthquake, COVID-19)
+  - Monthly forecasts for 2026
+  - Interactive Streamlit dashboard
+
+DOMAIN
+------
+Tourism, hospitality, and regional economic planning for the Everest/Sagarmatha
+region of Nepal.
+
+
+================================================================================
+2. DATA SOURCE & SCHEMA
+================================================================================
+
+PRIMARY DATASET: entry_data.csv
+-------------------------------
+Location: data/entry_data.csv
+Rows: ~169,000+ visitor records
+Period: 1995 - 2025
+
+COLUMNS (11 total):
+-------------------
+| Column                    | Type   | Description                                    |
+|---------------------------|--------|------------------------------------------------|
+| Visitor_ID                | int64  | Unique identifier for each visitor             |
+| Name                      | object | Visitor name                                   |
+| Visit_Date                | object | Date of visit (YYYY-MM-DD)                     |
+| Nationality               | object | Country of origin                              |
+| Purpose_of_Visit          | object | Trek type (e.g. Base Camp, Summit, Gokyo)      |
+| Age                       | int64  | Visitor age in years                           |
+| Gender                    | object | Male / Female                                  |
+| Expedition_Duration_Days  | int64  | Length of stay in days                         |
+| Permit_Fee_USD            | int64  | Permit fee paid in USD                         |
+| Year                      | int64  | Extracted year                                 |
+| Month                     | int64  | Extracted month (1-12)                         |
+
+PURPOSE OF VISIT VALUES (examples):
+-----------------------------------
+- Everest Base Camp Trek
+- Everest Summit Climb
+- Gokyo Lakes Trek
+- Photography Expedition
+- Research Expedition
+
+
+================================================================================
+3. PROJECT STRUCTURE
+================================================================================
+
+HRA data/
+│
+├── data/                          # Data folder
+│   ├── entry_data.csv             # Raw input data
+│   ├── entry_data_cleaned.csv     # Cleaned output (from data_prep.py)
+│   ├── yearly_summary.csv         # Yearly aggregated statistics
+│   ├── country_summary.csv        # Country-wise aggregated statistics
+│   ├── PROJECT_DOCUMENTATION.txt  # This file
+│   └── *.png                     # Analysis charts (from notebook)
+│
+├── scripts/                       # Python scripts
+│   └── data_prep.py               # Data cleaning & pipeline script
+│
+├── notebooks/                     # Jupyter notebooks
+│   ├── 1_exploration.ipynb        # Initial data exploration
+│   └── 2_data_analysis_and_visualization.ipynb  # Full EDA & viz
+│
+├── app.py                         # Streamlit dashboard (if present)
+├── test_setup.py                  # Environment sanity check
+├── requirements.txt               # Python dependencies
+├── README.md                      # Project README
+└── venv/                          # Python virtual environment
+
+
+================================================================================
+4. LIBRARIES USED & THEIR ROLES
+================================================================================
+
+DATA HANDLING
+-------------
+pandas (2.3.3)
+  - Core library for tabular data manipulation
+  - Used for: load CSV, clean, groupby, aggregate, merge, export
+  - Key operations: read_csv(), groupby(), agg(), to_datetime(), pd.cut()
+
+numpy (2.4.2)
+  - Numerical computing (used by pandas, scipy, scikit-learn)
+  - Used for: array operations, numerical indexing in notebooks
+
+VISUALIZATION
+-------------
+matplotlib (3.10.8)
+  - Low-level plotting (used by seaborn and notebooks)
+  - Used for: bar charts, line plots, heatmaps, subplots, annotations
+
+seaborn (0.13.2)
+  - Statistical visualization built on matplotlib
+  - Used for: violin plots, heatmaps, bar plots, styled charts
+  - Styles: seaborn-v0_8-whitegrid, husl palette
+
+altair (6.0.0)
+  - Declarative visualization for Streamlit dashboard
+  - Used for: horizontal bar charts with configurable axes
+  - Features: tooltips, sort, label angle control
+
+DASHBOARD
+---------
+streamlit (1.54.0)
+  - Web app framework for data dashboards
+  - Used for: interactive month selector, metrics, charts, tables
+  - Caching: st.cache_data for load_clean_data and build_forecasts
+
+UTILITIES
+---------
+pathlib (built-in)
+  - Cross-platform path handling
+  - Used for: PROJECT_ROOT, DATA_DIR, file existence checks
+
+calendar (built-in)
+  - Month names and date helpers
+  - Used for: calendar.month_name[i] in forecasts and selectors
+
+datetime (built-in)
+  - Date/time parsing (used via pandas)
+
+STATISTICS & ML (available, used in analysis logic)
+---------------------------------------------------
+scipy (1.17.0)
+  - Scientific computing (used by statsmodels, scikit-learn)
+
+statsmodels (0.14.6)
+  - Statistical modeling (available for advanced forecasting)
+
+scikit-learn (1.8.0)
+  - Machine learning (available for predictive models)
+
+xgboost (3.2.0)
+  - Gradient boosting (available for forecasting)
+
+OTHER DEPENDENCIES
+-----------------
+  - pyarrow, certifi, requests, etc.: support libraries for pandas, streamlit
+  - tabula-py, beautifulsoup4: optional for PDF/HTML scraping (not actively used)
+
+
+================================================================================
+5. ALGORITHMS, METHODS & LOGIC
+================================================================================
+
+5.1 DATA CLEANING (scripts/data_prep.py)
+----------------------------------------
+
+Step 1: Load Raw Data
+  - Read entry_data.csv with pandas read_csv()
+  - Validate file existence before loading
+
+Step 2: Type Conversion
+  - Visit_Date: string → datetime via pd.to_datetime()
+  - Enables date arithmetic and extraction
+
+Step 3: Derived Time Features
+  - Day = Visit_Date.dt.day
+  - Day_of_Week = Visit_Date.dt.day_name()
+  - Quarter = Visit_Date.dt.quarter
+  - Month_Name = Visit_Date.dt.month_name()
+
+Step 4: Categorical Optimization
+  - Convert Nationality, Purpose_of_Visit, Gender, Day_of_Week, Month_Name
+    to pandas 'category' dtype
+  - Reduces memory usage for repeated string values
+
+Step 5: Data Validation (checks only, no mutation)
+  - Missing values: df.isnull().sum()
+  - Duplicates: df.duplicated() and Visitor_ID.duplicated()
+  - Logical ranges:
+      Age: flag if < 10 or > 80
+      Expedition_Duration_Days: flag if < 1 or > 90
+      Permit_Fee_USD: flag if <= 0
+
+Step 6: Age Grouping
+  - pd.cut() with bins [0, 25, 35, 45, 55, 65, 100]
+  - Labels: 18-25, 26-35, 36-45, 46-55, 56-65, 65+
+
+
+5.2 AGGREGATION LOGIC (scripts/data_prep.py)
+--------------------------------------------
+
+Yearly Summary (build_yearly_summary):
+  - groupby("Year")
+  - Aggregations: count(Visitor_ID), sum(Permit_Fee_USD),
+    mean(Expedition_Duration_Days), mean(Age)
+  - Output columns: Year, Total_Visitors, Total_Revenue_USD, Avg_Duration, Avg_Age
+
+Country Summary (build_country_summary):
+  - groupby("Nationality")
+  - Same aggregations as yearly
+  - Sort by Total_Visitors descending
+  - Add Percentage = (Total_Visitors / sum) * 100
+
+
+5.3 FORECASTING LOGIC (app.py – Streamlit Dashboard)
+----------------------------------------------------
+
+Crisis-Year Exclusion:
+  - Exclude years 2015 (Nepal Earthquake), 2020, 2021 (COVID-19)
+  - Rationale: these years distort seasonal patterns
+
+Monthly Total Forecast for 2026:
+  - For each month (1–12):
+      Forecast = mean(visitors in that month across all non-crisis years)
+  - Simple historical average, no trend adjustment
+
+Segment-wise Forecast:
+  - For each segment (Gender, Nationality, Age_Group, Purpose_of_Visit):
+      1. Compute share of each category within each month in normal years
+         e.g. Male_share_Jan = Male_count_Jan / Total_Jan
+      2. For 2026, apply: Forecast_Male_Jan = Total_Forecast_Jan * Male_share_Jan
+  - Result: forecasted visitor count per segment per month
+
+
+5.4 OUTLIER DETECTION (notebook 2)
+----------------------------------
+
+IQR (Interquartile Range) Method:
+  - Q1 = 25th percentile of yearly visitors
+  - Q3 = 75th percentile
+  - IQR = Q3 - Q1
+  - Lower bound = Q1 - 1.5 * IQR
+  - Upper bound = Q3 + 1.5 * IQR
+  - Outliers = years where Total_Visitors < lower or > upper
+
+Event-Based Analysis:
+  - 2015: Compare visitors to pre-earthquake average
+  - 2020–2021: Compare to pre-COVID average
+  - Recovery: Compare 2022+ to normal average
+
+
+5.5 SEASONAL PATTERN (M-SHAPE)
+------------------------------
+  - Tourism in the Everest region shows two peaks:
+      Spring: April–May (pre-monsoon)
+      Autumn: October–November (post-monsoon)
+  - Low seasons: monsoon (June–Aug), winter (Dec–Feb)
+  - Visualized via monthly average bar chart and heatmap
+
+
+================================================================================
+6. COMPONENTS EXPLAINED
+================================================================================
+
+6.1 scripts/data_prep.py
+------------------------
+  - Reusable Python script (run from command line)
+  - Input: data/entry_data.csv
+  - Output: entry_data_cleaned.csv, yearly_summary.csv, country_summary.csv
+  - Use: python scripts/data_prep.py
+
+6.2 notebooks/1_exploration.ipynb
+---------------------------------
+  - Initial data load and structure check
+  - Verifies CSV path, prints head, columns, df.info()
+  - Confirms data accessibility
+
+6.3 notebooks/2_data_analysis_and_visualization.ipynb
+-----------------------------------------------------
+  - Full EDA pipeline
+  - Data cleaning, validation, age groups
+  - Yearly trends, seasonal patterns, country/age/gender analysis
+  - Outlier and crisis-event analysis
+  - Exports: cleaned CSV, summaries, PNG charts (yearly_trends, seasonal_pattern,
+    country_analysis, age_analysis, gender_analysis, outlier_analysis)
+
+6.4 app.py (Streamlit Dashboard)
+--------------------------------
+  - Loads entry_data_cleaned.csv
+  - Builds 2026 monthly forecasts (total + segments)
+  - Month selector (by name)
+  - Displays: metrics, horizontal bar charts (Altair), tables
+  - Use: streamlit run app.py
+
+6.5 test_setup.py
+-----------------
+  - Sanity check: imports pandas, matplotlib, seaborn
+  - Simple bar plot to verify visualization stack
+
+
+================================================================================
+7. DATA FLOW
+================================================================================
+
+  entry_data.csv (raw)
+       │
+       ├──► scripts/data_prep.py
+       │         │
+       │         ├──► entry_data_cleaned.csv
+       │         ├──► yearly_summary.csv
+       │         └──► country_summary.csv
+       │
+       └──► notebooks/1_exploration.ipynb  (direct load for exploration)
+       └──► notebooks/2_data_analysis_and_visualization.ipynb  (full EDA)
+
+  entry_data_cleaned.csv
+       │
+       └──► app.py
+                 │
+                 └──► Forecasts computed in memory
+                       └──► Displayed in Streamlit UI
+
+
+================================================================================
+8. KEY OUTPUTS
+================================================================================
+
+FILES:
+  - entry_data_cleaned.csv: cleaned dataset with derived columns
+  - yearly_summary.csv: year-level aggregates
+  - country_summary.csv: country-level aggregates
+  - *.png: charts from notebook analysis
+
+DASHBOARD (if app.py present):
+  - Forecasted visitors per month (2026)
+  - Gender, country, age, purpose breakdowns
+  - Month selector, metrics, tables
+
+
+================================================================================
+9. HOW TO EXPLAIN THIS PROJECT TO A THIRD PERSON
+================================================================================
+
+SHORT PITCH (30 seconds):
+-------------------------
+"This project analyzes three decades of tourist data for the Everest region of
+Nepal. We clean the data, detect patterns like seasonal peaks and crisis impacts
+(earthquake, COVID), and produce a simple forecast for 2026 with breakdowns by
+gender, country, age, and purpose of visit. An interactive dashboard lets users
+pick any month and see predicted visitor numbers."
+
+TECHNICAL SUMMARY (2 minutes):
+------------------------------
+"We use Python with pandas for data handling. The raw CSV has ~169k records with
+visitor demographics, visit dates, and permit fees. We clean it by converting
+dates, validating ranges, and creating age groups. We exclude crisis years
+(2015, 2020–2021) when building forecasts. The forecast for each month in 2026
+is the historical average of that month in normal years. Segment breakdowns
+(Gender, Country, etc.) use the same historical share applied to that total.
+Visualizations use matplotlib and seaborn in notebooks, and Altair in the
+Streamlit dashboard."
+
+KEY POINTS TO EMPHASIZE:
+------------------------
+  1. Domain: Tourism in a world-famous trekking region
+  2. Data: 30 years, 169k+ records, demographics and financial metrics
+  3. Methods: Standard EDA, aggregation, IQR-based outlier detection,
+     crisis exclusion, historical-average forecasting
+  4. Deliverables: Clean datasets, summary CSVs, analysis charts, interactive
+     dashboard with month-wise 2026 forecasts
+  5. Tech stack: Python, pandas, matplotlib, seaborn, Streamlit, Altair
+
+================================================================================
+                            END OF DOCUMENTATION
+================================================================================
